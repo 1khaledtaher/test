@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إضافة منتج جديد</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>إضافة منتج جديد</h2>
+        <form id="add-product-form">
+            <div class="form-group">
+                <label for="product-name">اسم المنتج</label>
+                <input type="text" id="product-name" name="product-name" required>
+            </div>
+            <div class="form-group">
+                <label for="product-price">السعر (بالجنيه)</label>
+                <input type="number" id="product-price" name="product-price" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="product-desc">الوصف</label>
+                <textarea id="product-desc" name="product-desc" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="product-image">صورة المنتج</label>
+                <input type="file" id="product-image" name="product-image" accept="image/*" required>
+            </div>
+            <button type="submit">إضافة المنتج</button>
+        </form>
+        <div id="upload-status"></div>
+    </div>
+    <!-- تحميل Firebase كوحدات -->
+    <script type="module">
+        // استيراد Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getDatabase } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+
+        // إعدادات Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
+            authDomain: "store-b5352.firebaseapp.com",
+            projectId: "store-b5352",
+            storageBucket: "store-b5352.firebasestorage.app",
+            messagingSenderId: "994825915869",
+            appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
+            measurementId: "G-KGZHS02V07"
+        };
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // استيراد الكود من admin.js
+        import { addProductFormHandler } from './admin.js';
+
+        // تنفيذ الدالة
+        addProductFormHandler(db);
+    </script>
+</body>
+</html>
