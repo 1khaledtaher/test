@@ -1,38 +1,60 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getFirestore, collection, getDocs, addDoc, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
   authDomain: "store-b5352.firebaseapp.com",
   projectId: "store-b5352",
-  storageBucket: "store-b5352.firebasestorage.app",
+  storageBucket: "store-b5352.appspot.com",
   messagingSenderId: "994825915869",
   appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
   measurementId: "G-KGZHS02V07"
 };
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// لو عايز حماية الأدمن: أضف هنا بيانات بريد الأدمن وكلمة السر
-const ADMIN_EMAIL = "admin@email.com";
-const ADMIN_PASS = "adminpass";
+const ADMIN_PASSWORD = "1234";
 
 let products = [];
 let categories = [];
 let coupons = [];
 let orders = [];
+let usersMap = {}; // userId => displayName/email
 
 let editProductId = null;
 
-// --------- SPA Routing ----------
+// كلمة سر الأدمن
+const passwordModal = document.getElementById("admin-password-modal");
+document.getElementById("admin-password-btn").onclick = checkAdminPassword;
+document.getElementById("admin-password-input").onkeydown = e=>{if(e.key==="Enter")checkAdminPassword()};
+function checkAdminPassword() {
+  const val = document.getElementById("admin-password-input").value;
+  if(val === ADMIN_PASSWORD) {
+    passwordModal.style.display = "none";
+    reloadAll();
+  } else {
+    document.getElementById("admin-password-error").style.display = "";
+  }
+}
+
+// القائمة الجانبية
+const sidebar = document.getElementById('sidebar');
+document.getElementById('sidebar-toggle').onclick = ()=>{
+  sidebar.classList.toggle('open');
+};
+document.body.addEventListener('click',e=>{
+  if(window.innerWidth<900 && !e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) sidebar.classList.remove('open');
+});
+
 function showAdminSection(section) {
   document.querySelectorAll('.admin-section').forEach(sec => sec.style.display = 'none');
   document.getElementById(`${section}-section`).style.display = '';
-  document.querySelectorAll('.admin-link').forEach(link => link.classList.remove('active'));
-  let active = document.querySelector(`.admin-link[data-section="${section}"]`);
+  document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+  let active = document.querySelector(`.sidebar-link[data-section="${section}"]`);
   if (active) active.classList.add('active');
+  sidebar.classList.remove('open');
 }
 window.addEventListener('hashchange', () => {
   let hash = location.hash.replace('#', '');
@@ -41,35 +63,12 @@ window.addEventListener('hashchange', () => {
 });
 showAdminSection(location.hash.replace('#','') || 'products');
 
-// --------- Auth Protection ----------
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    let email = prompt("بريد الأدمن:");
-    let pass = prompt("كلمة السر:");
-    if (!email || !pass) location.reload();
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      showToast('تم تسجيل الدخول بنجاح', 'success');
-      await reloadAll();
-    } catch {
-      alert("بيانات الدخول خطأ! أعد المحاولة.");
-      location.reload();
-    }
-  } else {
-    await reloadAll();
-  }
-});
-document.getElementById('admin-logout').onclick = async () => {
-  await signOut(auth);
-  location.reload();
-};
-
-// --------- تحميل كل البيانات ---------
 async function reloadAll() {
   await loadCategories();
   await loadProducts();
   await loadCoupons();
   await loadOrders();
+  await loadUsers();
   renderCategories();
   renderProducts();
   renderCoupons();
@@ -77,7 +76,7 @@ async function reloadAll() {
   fillCategorySelect();
 }
 
-// --------- المنتجات ---------
+// المنتجات
 async function loadProducts() {
   products = [];
   const snap = await getDocs(collection(db, "products"));
@@ -117,7 +116,9 @@ window.editProduct = function(id) {
   document.getElementById('product-name').value = prod.name;
   document.getElementById('product-desc').value = prod.desc||'';
   document.getElementById('product-price').value = prod.price;
-  document.getElementById('product-img').value = prod.img;
+  document.getElementById('product-img-file').value = '';
+  document.getElementById('product-img-preview').src = prod.img;
+  document.getElementById('product-img-preview').style.display = "block";
   document.getElementById('product-category').value = prod.category;
   document.getElementById('product-featured').checked = !!prod.featured;
   document.getElementById('product-modal-bg').style.display = "flex";
@@ -135,20 +136,47 @@ document.getElementById('add-product-btn').onclick = () => {
   editProductId = null;
   document.getElementById('product-modal-title').textContent = "منتج جديد";
   document.getElementById('product-form').reset();
+  document.getElementById('product-img-preview').style.display = "none";
   document.getElementById('product-modal-bg').style.display = "flex";
 };
 document.getElementById('close-product-modal').onclick = () => {
   document.getElementById('product-modal-bg').style.display = "none";
 };
+
+// معاينة الصورة قبل الرفع
+document.getElementById('product-img-file').onchange = function(e){
+  const file = e.target.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      document.getElementById('product-img-preview').src = e.target.result;
+      document.getElementById('product-img-preview').style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
 document.getElementById('product-form').onsubmit = async e => {
   e.preventDefault();
   let name = document.getElementById('product-name').value.trim();
   let desc = document.getElementById('product-desc').value.trim();
   let price = Number(document.getElementById('product-price').value);
-  let img = document.getElementById('product-img').value.trim();
   let category = document.getElementById('product-category').value;
   let featured = document.getElementById('product-featured').checked;
-  let data = {name, desc, price, img, category, featured};
+  let file = document.getElementById('product-img-file').files[0];
+
+  let imgUrl = "";
+  if(file){
+    showToast('جارِ رفع الصورة ...','info');
+    const imgRef = sRef(storage, `products/${Date.now()}_${file.name.replace(/\s/g,'_')}`);
+    await uploadBytes(imgRef, file);
+    imgUrl = await getDownloadURL(imgRef);
+  } else if(editProductId){
+    imgUrl = products.find(p=>p.id===editProductId).img;
+  } else {
+    showToast("يجب رفع صورة للمنتج","error"); return;
+  }
+  let data = {name, desc, price, img: imgUrl, category, featured};
   if (editProductId) {
     await updateDoc(doc(db, "products", editProductId), data);
     Object.assign(products.find(p=>p.id===editProductId), data);
@@ -162,7 +190,7 @@ document.getElementById('product-form').onsubmit = async e => {
   document.getElementById('product-modal-bg').style.display = "none";
 };
 
-// --------- التصنيفات ---------
+// التصنيفات
 async function loadCategories() {
   categories = [];
   const snap = await getDocs(collection(db, "categories"));
@@ -202,7 +230,7 @@ function fillCategorySelect() {
   sel.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
-// --------- الكوبونات ---------
+// الكوبونات
 async function loadCoupons() {
   coupons = [];
   const snap = await getDocs(collection(db, "coupons"));
@@ -239,22 +267,29 @@ document.getElementById('add-coupon-form').onsubmit = async e => {
   document.getElementById('add-coupon-form').reset();
 };
 
-// --------- الطلبات ---------
+// الطلبات + أسماء العملاء
 async function loadOrders() {
   orders = [];
   const snap = await getDocs(collection(db, "orders"));
   snap.forEach(docu => orders.push({id: docu.id, ...docu.data()}));
 }
+async function loadUsers() {
+  usersMap = {};
+  const snap = await getDocs(collection(db, "users"));
+  snap.forEach(docu => {
+    let d = docu.data();
+    usersMap[docu.id] = d.displayName || d.name || d.email || docu.id;
+  });
+}
 function renderOrders() {
   let tbody = document.getElementById('orders-tbody');
-  // ترتيب: غير ملغي (الأحدث للأقدم)، ثم الملغي (الأقدم للأحدث)
+  // ترتيب الطلبات: غير ملغي (الأحدث للأقدم)، ثم الملغي (الأقدم للأحدث)
   const activeStatuses = ["review", "shipping", "delivered", "returned"];
   const activeOrders = orders.filter(o => !o.status || activeStatuses.includes(o.status));
   const cancelledOrders = orders.filter(o => o.status === "cancelled");
   activeOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
   cancelledOrders.sort((a, b) => new Date(a.date) - new Date(b.date));
   const allSorted = [...activeOrders, ...cancelledOrders];
-
   tbody.innerHTML = allSorted.map(order => `
     <tr>
       <td>#${order.order_number||order.id}</td>
@@ -262,7 +297,7 @@ function renderOrders() {
         <span class="order-status ${order.status||''}">${getStatusText(order.status)}</span>
       </td>
       <td>${order.items.map(i=>`${i.name}(x${i.quantity})`).join('<br>')}</td>
-      <td>${order.userId}</td>
+      <td>${usersMap[order.userId]||order.userId||'-'}</td>
       <td>${order.total} ج</td>
       <td>${formatOrderDate(order.date)}</td>
       <td>
@@ -306,7 +341,7 @@ function formatOrderDate(dateISO) {
   return `${dateStr} - ${hours}:${mins} ${ampm}`;
 }
 
-// --------- Toast ---------
+// Toast
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -314,5 +349,5 @@ function showToast(message, type = 'info') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => toast.remove(), 2900);
+  setTimeout(() => toast.remove(), 2700);
 }
