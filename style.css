@@ -1,208 +1,117 @@
-:root {
-    --bg-color: #FDF8F5;
-    --surface-color: #FFFFFF;
-    --text-color: #4A4A4A;
-    --primary-color: #E6A4B4;
-    --primary-dark-color: #D689A0;
-    --accent-color: #C0A080;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
-    --font-main: 'Tajawal', sans-serif;
-    --font-headings: 'Marhey', sans-serif;
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    --border-radius: 15px;
+/* اترك نفس ملف CSS المستخدم لواجهة المستخدم وأضف التالي إن شئت لتجميل لوحة الأدمن */
+.admin-nav-links {
+  display: flex;
+  gap: 1.2em;
+  align-items: center;
+  justify-content: flex-end;
 }
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
-    font-family: var(--font-main); 
-    background-color: var(--bg-color); 
-    display: flex; 
-    min-height: 100vh; 
-    direction: rtl; 
+.admin-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 0.7em 1.3em;
+  border-radius: 7px;
+  background: none;
+  transition: background .18s;
+  border: none;
+  font-size: 1.1em;
+  cursor: pointer;
 }
-
-.sidebar {
-    width: 250px;
-    background-color: var(--surface-color);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    position: fixed;
-    height: 100%;
+.admin-link.active, .admin-link:hover {
+  background: #f3f6fb;
+  color: var(--primary);
 }
-
-.sidebar h2 {
-    font-family: var(--font-headings);
-    color: var(--primary-color);
-    margin-bottom: 30px;
-    text-align: center;
+#admin-navbar {
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  padding: 1em 1.5em;
+  justify-content: space-between;
 }
-
-.sidebar nav ul {
-    list-style: none;
-}
-
-.sidebar nav ul li {
-    margin-bottom: 15px;
-}
-
-.sidebar nav ul li a {
-    color: var(--text-color);
-    text-decoration: none;
-    font-size: 1.1rem;
-    display: block;
-    padding: 10px;
-    border-radius: 8px;
-    transition: background-color 0.3s;
-}
-
-.sidebar nav ul li a:hover, .sidebar nav ul li a.active {
-    background-color: var(--primary-color);
-    color: var(--surface-color);
-}
-
-.main-content {
-    margin-right: 250px;
-    padding: 20px;
-    flex-grow: 1;
-}
-
 .admin-section {
-    display: none;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 2em 1em 1em 1em;
+  margin: 2em auto;
+  max-width: 1100px;
 }
 
-.admin-section.active {
-    display: block;
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5em;
 }
-
-.admin-section h2 {
-    color: var(--primary-color);
-    margin-bottom: 20px;
+.admin-table th, .admin-table td {
+  border: 1px solid #eee;
+  padding: .6em;
+  text-align: center;
 }
-
+.admin-table th {
+  background: #f3f6fb;
+  color: #22223b;
+}
+.admin-table img {
+  max-width: 60px;
+  max-height: 60px;
+}
 .admin-form {
-    background-color: var(--surface-color);
-    padding: 20px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  flex-wrap: wrap;
+  margin-bottom: 1.2em;
 }
-
-.form-group {
-    margin-bottom: 15px;
+.admin-form input, .admin-form select, .admin-form textarea {
+  flex: 1 1 180px;
+  padding: .5em;
+  border-radius: 7px;
+  border: 1px solid #e6e6e6;
 }
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--text-color);
+.admin-form textarea {
+  min-width: 220px;
+  min-height: 40px;
 }
-
-.form-group input, .form-group textarea, .form-group select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-family: var(--font-main);
-    direction: rtl;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-}
-
 .admin-form button {
-    background-color: var(--primary-color);
-    color: var(--surface-color);
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.3s;
+  flex: 0 0 auto;
 }
 
-.admin-form button:hover {
-    background-color: var(--primary-dark-color);
+.modal-bg {
+  display: none;
+  position: fixed;
+  z-index: 1003;
+  top:0;left:0;right:0;bottom:0;
+  background: rgba(34,34,59,0.19);
+  align-items: center;
+  justify-content: center;
 }
-
-.items-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+.modal-bg .modal-content {
+  background: #fff;
+  border-radius: 14px;
+  padding: 2em 2em 1.2em 2em;
+  max-width: 430px;
+  width: 95vw;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(59,130,246,0.07);
+  margin: auto;
 }
-
-.item-card {
-    background-color: var(--surface-color);
-    padding: 15px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.modal-close {
+  position: absolute;
+  left: 12px; top: 8px;
+  font-size: 2em;
+  color: #888;
+  cursor: pointer;
+  font-weight: bold;
 }
-
-.item-card img {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.item-details {
-    flex-grow: 1;
-}
-
-.item-details h4 {
-    color: var(--primary-color);
-    margin-bottom: 5px;
-}
-
-.delete-btn {
-    background-color: var(--danger-color);
-    color: var(--surface-color);
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.status-select {
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-}
-
-#toast-container {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-}
-
-.toast {
-    padding: 10px 20px;
-    border-radius: 5px;
-    color: white;
-    margin-bottom: 10px;
-    animation: slideIn 0.3s ease forwards, fadeOut 0.5s ease 2.5s forwards;
-}
-
-.toast.success { background-color: var(--success-color); }
-.toast.error { background-color: var(--danger-color); }
-
-@keyframes slideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-
-@media (max-width: 768px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-    }
-    .main-content {
-        margin-right: 0;
-    }
+.order-status.review    { background: #fff0c2; color: #ad8c00; }
+.order-status.shipping  { background: #c2e6ff; color: #1477b7; }
+.order-status.delivered { background: #d1ffd6; color: #229b3a; }
+.order-status.cancelled { background: #ffd1d1; color: #b72222; }
+.order-status.returned  { background: #ffe4d1; color: #b75922; }
+.order-status {
+  border-radius: 6px;
+  padding: 0.22em 1em;
+  font-weight: bold;
+  display: inline-block;
 }
