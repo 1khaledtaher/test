@@ -4,13 +4,13 @@ import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } 
 
 // Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
-    authDomain: "store-b5352.firebaseapp.com",
-    projectId: "store-b5352",
-    storageBucket: "store-b5352.firebasestorage.app",
-    messagingSenderId: "994825915869",
-    appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
-    measurementId: "G-KGZHS02V07"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID",
+    measurementId: "YOUR_MEASUREMENT_ID"
 };
 
 // Initialize Firebase
@@ -23,7 +23,8 @@ let products = [];
 let categories = [];
 let coupons = {};
 let orders = [];
-const adminUIDs = ["S19VDQs7RqcQvN6jeUGgTBIMWb22"]; // استبدل بمعرف المستخدم الإداري
+const adminUIDs = ["YOUR_ADMIN_UID"]; // استبدل بمعرف المستخدم الإداري
+let isProcessingAuth = false; // لمنع إعادة التوجيه المتكرر
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,12 +34,26 @@ document.addEventListener('DOMContentLoaded', () => {
 function initAdmin() {
     // Check admin status
     onAuthStateChanged(auth, (user) => {
+        if (isProcessingAuth) return; // منع التكرار
+        isProcessingAuth = true;
+
+        const adminContainer = document.getElementById('admin-container');
+        if (!adminContainer) {
+            console.warn("عنصر 'admin-container' غير موجود في DOM.");
+            isProcessingAuth = false;
+            return;
+        }
+
         if (user && adminUIDs.includes(user.uid)) {
-            document.getElementById('admin-container')?.classList.add('active');
+            adminContainer.classList.add('active');
             loadAdminData();
+            isProcessingAuth = false;
         } else {
-            // Redirect to index.html with auth modal trigger if not admin
-            window.location.href = "index.html?auth=login";
+            // إظهار إشعار وإعادة توجيه إلى index.html
+            showToast('غير مصرح لك بالوصول إلى لوحة الإدارة.', 'error');
+            setTimeout(() => {
+                window.location.href = "index.html?auth=login";
+            }, 1000); // تأخير لضمان عرض الإشعار
         }
     });
 
@@ -46,6 +61,8 @@ function initAdmin() {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', handleLogout);
+    } else {
+        console.warn("عنصر 'logout-btn' غير موجود في DOM.");
     }
 
     // Form submissions
@@ -59,7 +76,8 @@ function initAdmin() {
     if (couponForm) couponForm.addEventListener('submit', handleCouponSubmit);
 
     // Global click handler for admin actions
-    document.body.addEventListener('click', handleAdminClick);
+    const body = document.body;
+    if (body) body.addEventListener('click', handleAdminClick);
 
     // Initialize page navigation
     const navLinks = document.querySelectorAll('.nav-link');
