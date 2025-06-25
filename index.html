@@ -1,63 +1,117 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إضافة منتج جديد</title>
-    <link rel="stylesheet" href="style.css">
+    <title>لوحة تحكم أناقة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Marhey:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="admin-style.css">
 </head>
 <body>
-    <div class="container">
-        <h2>إضافة منتج جديد</h2>
-        <form id="add-product-form">
-            <div class="form-group">
-                <label for="product-name">اسم المنتج</label>
-                <input type="text" id="product-name" name="product-name" required>
-            </div>
-            <div class="form-group">
-                <label for="product-price">السعر (بالجنيه)</label>
-                <input type="number" id="product-price" name="product-price" step="0.01" required>
-            </div>
-            <div class="form-group">
-                <label for="product-desc">الوصف</label>
-                <textarea id="product-desc" name="product-desc" rows="4" required></textarea>
-            </div>
-            <div class="form-group">
-                <label for="product-image">صورة المنتج</label>
-                <input type="file" id="product-image" name="product-image" accept="image/*" required>
-            </div>
-            <button type="submit">إضافة المنتج</button>
-        </form>
-        <div id="upload-status"></div>
+    <div class="sidebar">
+        <h2>أناقة - لوحة التحكم</h2>
+        <nav>
+            <ul>
+                <li><a href="#" class="nav-link active" data-section="products">المنتجات</a></li>
+                <li><a href="#" class="nav-link" data-section="categories">الأقسام</a></li>
+                <li><a href="#" class="nav-link" data-section="coupons">أكواد الخصم</a></li>
+                <li><a href="#" class="nav-link" data-section="orders">الطلبات</a></li>
+                <li><a href="#" class="nav-link" data-section="users">المستخدمين</a></li>
+                <li><a href="#" id="logout-btn">تسجيل الخروج</a></li>
+            </ul>
+        </nav>
+    </div>
+    <div class="main-content">
+        <!-- Products Section -->
+        <section id="products-section" class="admin-section active">
+            <h2>إدارة المنتجات</h2>
+            <form id="add-product-form" class="admin-form">
+                <div class="form-group">
+                    <label for="product-name">اسم المنتج</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="product-price">السعر (بالجنيه)</label>
+                    <input type="number" id="product-price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="product-desc">الوصف</label>
+                    <textarea id="product-desc" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="product-category">القسم</label>
+                    <select id="product-category" required>
+                        <option value="">اختر القسم</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="product-image">صورة المنتج</label>
+                    <input type="file" id="product-image" accept="image/*">
+                </div>
+                <button type="submit">إضافة المنتج</button>
+                <p id="product-upload-status"></p>
+            </form>
+            <h3>قائمة المنتجات</h3>
+            <div id="products-list" class="items-grid"></div>
+        </section>
+
+        <!-- Categories Section -->
+        <section id="categories-section" class="admin-section">
+            <h2>إدارة الأقسام</h2>
+            <form id="add-category-form" class="admin-form">
+                <div class="form-group">
+                    <label for="category-name">اسم القسم</label>
+                    <input type="text" id="category-name" required>
+                </div>
+                <button type="submit">إضافة القسم</button>
+                <p id="category-status"></p>
+            </form>
+            <h3>قائمة الأقسام</h3>
+            <div id="categories-list" class="items-grid"></div>
+        </section>
+
+        <!-- Coupons Section -->
+        <section id="coupons-section" class="admin-section">
+            <h2>إدارة أكواد الخصم</h2>
+            <form id="add-coupon-form" class="admin-form">
+                <div class="form-group">
+                    <label for="coupon-code">كود الخصم</label>
+                    <input type="text" id="coupon-code" required>
+                </div>
+                <div class="form-group">
+                    <label for="coupon-type">نوع الخصم</label>
+                    <select id="coupon-type" required>
+                        <option value="percent">نسبة مئوية</option>
+                        <option value="fixed">قيمة ثابتة</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="coupon-value">قيمة الخصم</label>
+                    <input type="number" id="coupon-value" step="0.01" required>
+                </div>
+                <button type="submit">إضافة الكود</button>
+                <p id="coupon-status"></p>
+            </form>
+            <h3>قائمة أكواد الخصم</h3>
+            <div id="coupons-list" class="items-grid"></div>
+        </section>
+
+        <!-- Orders Section -->
+        <section id="orders-section" class="admin-section">
+            <h2>إدارة الطلبات</h2>
+            <div id="orders-list" class="items-grid"></div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="users-section" class="admin-section">
+            <h2>إدارة المستخدمين</h2>
+            <div id="users-list" class="items-grid"></div>
+        </section>
     </div>
 
-    <!-- تحميل Firebase كوحدات -->
-    <script type="module">
-        // استيراد Firebase
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-        import { getDatabase } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    <div id="toast-container"></div>
 
-        // ✅ إعدادات Firebase (بعد التعديل)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
-            authDomain: "store-b5352.firebaseapp.com",
-            databaseURL: "https://store-b5352-default-rtdb.firebaseio.com", // ✅ تم إضافته
-            projectId: "store-b5352",
-            storageBucket: "store-b5352.firebasestorage.app",
-            messagingSenderId: "994825915869",
-            appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
-            measurementId: "G-KGZHS02V07"
-        };
-
-        // تهيئة Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // استيراد الكود من admin.js
-        import { addProductFormHandler } from './admin.js';
-
-        // تنفيذ الدالة
-        addProductFormHandler(db);
-    </script>
+    <script type="module" src="admin.js"></script>
 </body>
 </html>
