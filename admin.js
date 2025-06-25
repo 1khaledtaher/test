@@ -2,6 +2,9 @@
 const CLOUDINARY_CLOUD_NAME = "dxisaw6cu";
 const CLOUDINARY_UPLOAD_PRESET = "anaqa-products"; // اسم البريسيت الذي أنشأته
 
+// استيراد الدوال من Firebase
+import { ref, push } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
 // تصدير دالة للتعامل مع الفورم
 export function addProductFormHandler(db) {
     const addProductForm = document.getElementById('add-product-form');
@@ -10,7 +13,6 @@ export function addProductFormHandler(db) {
     addProductForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // 1. الحصول على بيانات الفورم
         const productName = document.getElementById('product-name').value;
         const productPrice = parseFloat(document.getElementById('product-price').value);
         const productDesc = document.getElementById('product-desc').value;
@@ -23,25 +25,22 @@ export function addProductFormHandler(db) {
 
         uploadStatus.textContent = "جاري رفع الصورة...";
 
-        // 2. إعداد البيانات لرفعها إلى Cloudinary
         const formData = new FormData();
         formData.append('file', imageFile);
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
         try {
-            // 3. رفع الصورة إلى Cloudinary باستخدام API
             const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
                 method: 'POST',
                 body: formData
             });
-            
+
             const data = await response.json();
 
             if (data.secure_url) {
                 const imageUrl = data.secure_url;
                 uploadStatus.textContent = "تم رفع الصورة بنجاح! جاري حفظ المنتج...";
 
-                // 4. إنشاء كائن المنتج الجديد
                 const newProduct = {
                     name: productName,
                     price: productPrice,
@@ -49,12 +48,14 @@ export function addProductFormHandler(db) {
                     img: imageUrl,
                 };
 
-                console.log("جاهز للحفظ:", newProduct); // تسجيل قبل الحفظ
+                console.log("جاهز للحفظ:", newProduct);
+
                 try {
-                    await db.ref('products').push(newProduct);
-                    console.log("تم الحفظ بنجاح"); // تسجيل بعد النجاح
+                    const productsRef = ref(db, 'products');
+                    await push(productsRef, newProduct);
+                    console.log("تم الحفظ بنجاح");
                     uploadStatus.textContent = "🎉 تم إضافة المنتج بنجاح!";
-                    addProductForm.reset(); // إفراغ الفورم
+                    addProductForm.reset();
                 } catch (firebaseError) {
                     console.error("Firebase Error:", firebaseError);
                     uploadStatus.textContent = `حدث خطأ أثناء الحفظ: ${firebaseError.message}`;
