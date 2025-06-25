@@ -4,15 +4,14 @@ import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } 
 
 // Firebase Configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID",
-    measurementId: "YOUR_MEASUREMENT_ID"
+    apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
+    authDomain: "store-b5352.firebaseapp.com",
+    projectId: "store-b5352",
+    storageBucket: "store-b5352.firebasestorage.app",
+    messagingSenderId: "994825915869",
+    appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
+    measurementId: "G-KGZHS02V07"
 };
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -23,7 +22,7 @@ let products = [];
 let categories = [];
 let coupons = {};
 let orders = [];
-const adminUIDs = ["YOUR_ADMIN_UID"];
+const adminUIDs = ["S19VDQs7RqcQvN6jeUGgTBIMWb22"];
 let isProcessingAuth = false;
 
 // DOM Initialization
