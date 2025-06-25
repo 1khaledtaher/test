@@ -6,57 +6,79 @@
   <title>لوحة تحكم الأدمن - DZ Store</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <nav id="admin-navbar">
-    <div class="logo">لوحة تحكم الأدمن</div>
-    <div class="admin-nav-links">
-      <a href="#products" class="admin-link active" data-section="products">المنتجات</a>
-      <a href="#categories" class="admin-link" data-section="categories">التصنيفات</a>
-      <a href="#coupons" class="admin-link" data-section="coupons">الكوبونات</a>
-      <a href="#orders" class="admin-link" data-section="orders">الطلبات</a>
-      <button id="admin-logout" class="danger-btn small-btn" style="margin-right:1em;">تسجيل الخروج</button>
+<body class="admin-body">
+  <!-- نافذة كلمة السر -->
+  <div id="admin-password-modal" class="modal-bg" style="display:flex;">
+    <div class="modal-content">
+      <h2>دخول الأدمن</h2>
+      <input type="password" id="admin-password-input" placeholder="أدخل كلمة السر" autocomplete="off" style="text-align:center;">
+      <button class="big-btn" id="admin-password-btn">دخول</button>
+      <div id="admin-password-error" style="color:#e53e3e;margin-top:1em;display:none;">كلمة السر غير صحيحة</div>
     </div>
-  </nav>
-  <main id="admin-main">
+  </div>
+  <!-- القائمة الجانبية -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">DZ Store Admin</span>
+      <button id="sidebar-toggle" class="sidebar-toggle">&#9776;</button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#products" class="sidebar-link active" data-section="products"><span>🛒</span> المنتجات</a>
+      <a href="#categories" class="sidebar-link" data-section="categories"><span>📂</span> التصنيفات</a>
+      <a href="#coupons" class="sidebar-link" data-section="coupons"><span>🏷️</span> الكوبونات</a>
+      <a href="#orders" class="sidebar-link" data-section="orders"><span>📦</span> الطلبات</a>
+    </nav>
+  </aside>
+  <main id="admin-main" class="admin-main">
     <!-- المنتجات -->
     <section class="admin-section" id="products-section">
-      <h1>إدارة المنتجات</h1>
-      <button class="big-btn" id="add-product-btn">منتج جديد</button>
-      <table class="admin-table" id="products-table">
-        <thead>
-          <tr>
-            <th>الصورة</th>
-            <th>الاسم</th>
-            <th>الوصف</th>
-            <th>السعر</th>
-            <th>التصنيف</th>
-            <th>مميز؟</th>
-            <th>تعديل/حذف</th>
-          </tr>
-        </thead>
-        <tbody id="products-tbody"></tbody>
-      </table>
+      <div class="section-header">
+        <h1>إدارة المنتجات</h1>
+        <button class="big-btn gradient-btn" id="add-product-btn">+ منتج جديد</button>
+      </div>
+      <div class="table-container">
+        <table class="admin-table" id="products-table">
+          <thead>
+            <tr>
+              <th>الصورة</th>
+              <th>الاسم</th>
+              <th>الوصف</th>
+              <th>السعر</th>
+              <th>التصنيف</th>
+              <th>مميز؟</th>
+              <th>تعديل/حذف</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
     </section>
     <!-- التصنيفات -->
     <section class="admin-section" id="categories-section" style="display:none;">
-      <h1>إدارة التصنيفات</h1>
+      <div class="section-header">
+        <h1>إدارة التصنيفات</h1>
+      </div>
       <form id="add-category-form" class="admin-form">
         <input type="text" id="category-name" placeholder="اسم التصنيف" required>
         <button type="submit" class="big-btn">إضافة تصنيف</button>
       </form>
-      <table class="admin-table" id="categories-table">
-        <thead>
-          <tr>
-            <th>اسم التصنيف</th>
-            <th>حذف</th>
-          </tr>
-        </thead>
-        <tbody id="categories-tbody"></tbody>
-      </table>
+      <div class="table-container">
+        <table class="admin-table" id="categories-table">
+          <thead>
+            <tr>
+              <th>اسم التصنيف</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="categories-tbody"></tbody>
+        </table>
+      </div>
     </section>
     <!-- الكوبونات -->
     <section class="admin-section" id="coupons-section" style="display:none;">
-      <h1>إدارة الكوبونات</h1>
+      <div class="section-header">
+        <h1>إدارة الكوبونات</h1>
+      </div>
       <form id="add-coupon-form" class="admin-form">
         <input type="text" id="coupon-code" placeholder="الكود" required>
         <select id="coupon-type" required>
@@ -66,35 +88,41 @@
         <input type="number" id="coupon-value" placeholder="القيمة" required>
         <button type="submit" class="big-btn">إضافة كوبون</button>
       </form>
-      <table class="admin-table" id="coupons-table">
-        <thead>
-          <tr>
-            <th>الكود</th>
-            <th>النوع</th>
-            <th>القيمة</th>
-            <th>حذف</th>
-          </tr>
-        </thead>
-        <tbody id="coupons-tbody"></tbody>
-      </table>
+      <div class="table-container">
+        <table class="admin-table" id="coupons-table">
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>النوع</th>
+              <th>القيمة</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="coupons-tbody"></tbody>
+        </table>
+      </div>
     </section>
     <!-- الطلبات -->
     <section class="admin-section" id="orders-section" style="display:none;">
-      <h1>إدارة الطلبات</h1>
-      <table class="admin-table" id="orders-table">
-        <thead>
-          <tr>
-            <th>رقم الطلب</th>
-            <th>حالة الطلب</th>
-            <th>المنتجات</th>
-            <th>المستخدم</th>
-            <th>الإجمالي</th>
-            <th>التاريخ</th>
-            <th>تحديث الحالة</th>
-          </tr>
-        </thead>
-        <tbody id="orders-tbody"></tbody>
-      </table>
+      <div class="section-header">
+        <h1>إدارة الطلبات</h1>
+      </div>
+      <div class="table-container">
+        <table class="admin-table" id="orders-table">
+          <thead>
+            <tr>
+              <th>رقم الطلب</th>
+              <th>حالة الطلب</th>
+              <th>المنتجات</th>
+              <th>اسم العميل</th>
+              <th>الإجمالي</th>
+              <th>التاريخ</th>
+              <th>تحديث الحالة</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
     </section>
   </main>
   <!-- مودال منتج -->
@@ -102,16 +130,17 @@
     <div class="modal-content">
       <span class="modal-close" id="close-product-modal">&times;</span>
       <h2 id="product-modal-title">منتج جديد</h2>
-      <form id="product-form" class="admin-form">
+      <form id="product-form" class="admin-form" enctype="multipart/form-data">
         <input type="text" id="product-name" placeholder="اسم المنتج" required>
         <textarea id="product-desc" placeholder="الوصف"></textarea>
         <input type="number" id="product-price" placeholder="السعر" required>
-        <input type="text" id="product-img" placeholder="رابط الصورة" required>
+        <input type="file" id="product-img-file" accept="image/*">
+        <img id="product-img-preview" src="" style="display:none;max-width:90px;border-radius:7px;margin-bottom:6px;">
         <select id="product-category"></select>
         <label>
           <input type="checkbox" id="product-featured"> منتج مميز؟
         </label>
-        <button type="submit" class="big-btn">حفظ</button>
+        <button type="submit" class="big-btn gradient-btn">حفظ</button>
       </form>
     </div>
   </div>
