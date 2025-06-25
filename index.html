@@ -1,143 +1,121 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة الإدارة - أناقة</title>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Marhey:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>لوحة تحكم الأدمن - DZ Store</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header class="header admin-header">
-        <nav class="navbar container">
-            <a href="#" class="logo">أناقة - لوحة الإدارة</a>
-            <ul class="nav-links">
-                <li><a href="#" class="nav-link active" data-page="products">المنتجات</a></li>
-                <li><a href="#" class="nav-link" data-page="categories">الأقسام</a></li>
-                <li><a href="#" class="nav-link" data-page="coupons">أكواد الخصم</a></li>
-                <li><a href="#" class="nav-link" data-page="orders">الطلبات</a></li>
-            </ul>
-            <div class="nav-actions">
-                <button class="cta-button cta-button-small" id="logout-btn">تسجيل الخروج</button>
-            </div>
-        </nav>
-    </header>
-
-    <main id="admin-container">
-        <section id="products-page" class="page-section active">
-            <div class="container">
-                <h2 class="section-title">إدارة المنتجات</h2>
-                <form id="product-form">
-                    <input type="hidden" id="product-id">
-                    <div class="form-group">
-                        <label for="product-name">اسم المنتج</label>
-                        <input type="text" id="product-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-price">السعر (جنيه)</label>
-                        <input type="number" id="product-price" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-category">القسم</label>
-                        <select id="product-category" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-image">رابط الصورة</label>
-                        <input type="url" id="product-image" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="product-description">الوصف</label>
-                        <textarea id="product-description" rows="4"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" id="product-featured"> مميز</label>
-                    </div>
-                    <button type="submit" class="cta-button">حفظ</button>
-                </form>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>الاسم</th>
-                            <th>السعر</th>
-                            <th>القسم</th>
-                            <th>الصورة</th>
-                            <th>مميز</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="products-list"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <section id="categories-page" class="page-section">
-            <div class="container">
-                <h2 class="section-title">إدارة الأقسام</h2>
-                <form id="category-form">
-                    <input type="hidden" id="category-id">
-                    <div class="form-group">
-                        <label for="category-name">اسم القسم</label>
-                        <input type="text" id="category-name" required>
-                    </div>
-                    <button type="submit" class="cta-button">حفظ</button>
-                </form>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>الاسم</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="categories-list"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <section id="coupons-page" class="page-section">
-            <div class="container">
-                <h2 class="section-title">إدارة أكواد الخصم</h2>
-                <form id="coupon-form">
-                    <div class="form-group">
-                        <label for="coupon-code">كود الخصم</label>
-                        <input type="text" id="coupon-code" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="coupon-type">نوع الخصم</label>
-                        <select id="coupon-type" required>
-                            <option value="percent">نسبة مئوية</option>
-                            <option value="fixed">قيمة ثابتة</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="coupon-value">القيمة</label>
-                        <input type="number" id="coupon-value" step="0.01" required>
-                    </div>
-                    <button type="submit" class="cta-button">إضافة</button>
-                </form>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>الكود</th>
-                            <th>القيمة</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="coupons-list"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <section id="orders-page" class="page-section">
-            <div class="container">
-                <h2 class="section-title">إدارة الطلبات</h2>
-                <div id="orders-list"></div>
-            </div>
-        </section>
-    </main>
-
-    <div id="toast-container"></div>
-
-    <script type="module" src="admin.js"></script>
+  <nav id="admin-navbar">
+    <div class="logo">لوحة تحكم الأدمن</div>
+    <div class="admin-nav-links">
+      <a href="#products" class="admin-link active" data-section="products">المنتجات</a>
+      <a href="#categories" class="admin-link" data-section="categories">التصنيفات</a>
+      <a href="#coupons" class="admin-link" data-section="coupons">الكوبونات</a>
+      <a href="#orders" class="admin-link" data-section="orders">الطلبات</a>
+      <button id="admin-logout" class="danger-btn small-btn" style="margin-right:1em;">تسجيل الخروج</button>
+    </div>
+  </nav>
+  <main id="admin-main">
+    <!-- المنتجات -->
+    <section class="admin-section" id="products-section">
+      <h1>إدارة المنتجات</h1>
+      <button class="big-btn" id="add-product-btn">منتج جديد</button>
+      <table class="admin-table" id="products-table">
+        <thead>
+          <tr>
+            <th>الصورة</th>
+            <th>الاسم</th>
+            <th>الوصف</th>
+            <th>السعر</th>
+            <th>التصنيف</th>
+            <th>مميز؟</th>
+            <th>تعديل/حذف</th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody"></tbody>
+      </table>
+    </section>
+    <!-- التصنيفات -->
+    <section class="admin-section" id="categories-section" style="display:none;">
+      <h1>إدارة التصنيفات</h1>
+      <form id="add-category-form" class="admin-form">
+        <input type="text" id="category-name" placeholder="اسم التصنيف" required>
+        <button type="submit" class="big-btn">إضافة تصنيف</button>
+      </form>
+      <table class="admin-table" id="categories-table">
+        <thead>
+          <tr>
+            <th>اسم التصنيف</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="categories-tbody"></tbody>
+      </table>
+    </section>
+    <!-- الكوبونات -->
+    <section class="admin-section" id="coupons-section" style="display:none;">
+      <h1>إدارة الكوبونات</h1>
+      <form id="add-coupon-form" class="admin-form">
+        <input type="text" id="coupon-code" placeholder="الكود" required>
+        <select id="coupon-type" required>
+          <option value="percent">نسبة %</option>
+          <option value="fixed">قيمة ثابتة</option>
+        </select>
+        <input type="number" id="coupon-value" placeholder="القيمة" required>
+        <button type="submit" class="big-btn">إضافة كوبون</button>
+      </form>
+      <table class="admin-table" id="coupons-table">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>النوع</th>
+            <th>القيمة</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="coupons-tbody"></tbody>
+      </table>
+    </section>
+    <!-- الطلبات -->
+    <section class="admin-section" id="orders-section" style="display:none;">
+      <h1>إدارة الطلبات</h1>
+      <table class="admin-table" id="orders-table">
+        <thead>
+          <tr>
+            <th>رقم الطلب</th>
+            <th>حالة الطلب</th>
+            <th>المنتجات</th>
+            <th>المستخدم</th>
+            <th>الإجمالي</th>
+            <th>التاريخ</th>
+            <th>تحديث الحالة</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
+    </section>
+  </main>
+  <!-- مودال منتج -->
+  <div class="modal-bg" id="product-modal-bg">
+    <div class="modal-content">
+      <span class="modal-close" id="close-product-modal">&times;</span>
+      <h2 id="product-modal-title">منتج جديد</h2>
+      <form id="product-form" class="admin-form">
+        <input type="text" id="product-name" placeholder="اسم المنتج" required>
+        <textarea id="product-desc" placeholder="الوصف"></textarea>
+        <input type="number" id="product-price" placeholder="السعر" required>
+        <input type="text" id="product-img" placeholder="رابط الصورة" required>
+        <select id="product-category"></select>
+        <label>
+          <input type="checkbox" id="product-featured"> منتج مميز؟
+        </label>
+        <button type="submit" class="big-btn">حفظ</button>
+      </form>
+    </div>
+  </div>
+  <div id="toast-container"></div>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>
