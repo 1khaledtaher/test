@@ -23,8 +23,8 @@ let products = [];
 let categories = [];
 let coupons = {};
 let orders = [];
-const adminUIDs = ["YOUR_ADMIN_UID"]; // استبدل بمعرف المستخدم الإداري
-let isProcessingAuth = false; // لمنع إعادة التوجيه المتكرر
+const adminUIDs = ["YOUR_ADMIN_UID"];
+let isProcessingAuth = false;
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,15 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAdmin() {
-    // Check admin status
     onAuthStateChanged(auth, (user) => {
-        if (isProcessingAuth) return; // منع التكرار
+        if (isProcessingAuth) return;
         isProcessingAuth = true;
 
         const adminContainer = document.getElementById('admin-container');
         if (!adminContainer) {
             console.warn("عنصر 'admin-container' غير موجود في DOM.");
-            isProcessingAuth = false;
+            showToast('خطأ في تحميل لوحة الإدارة.', 'error');
+            setTimeout(() => {
+                window.location.href = "index.html?auth=login";
+            }, 1000);
             return;
         }
 
@@ -49,23 +51,16 @@ function initAdmin() {
             loadAdminData();
             isProcessingAuth = false;
         } else {
-            // إظهار إشعار وإعادة توجيه إلى index.html
             showToast('غير مصرح لك بالوصول إلى لوحة الإدارة.', 'error');
             setTimeout(() => {
                 window.location.href = "index.html?auth=login";
-            }, 1000); // تأخير لضمان عرض الإشعار
+            }, 1000);
         }
     });
 
-    // Logout button
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-    } else {
-        console.warn("عنصر 'logout-btn' غير موجود في DOM.");
-    }
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-    // Form submissions
     const productForm = document.getElementById('product-form');
     if (productForm) productForm.addEventListener('submit', handleProductSubmit);
 
@@ -75,11 +70,8 @@ function initAdmin() {
     const couponForm = document.getElementById('coupon-form');
     if (couponForm) couponForm.addEventListener('submit', handleCouponSubmit);
 
-    // Global click handler for admin actions
-    const body = document.body;
-    if (body) body.addEventListener('click', handleAdminClick);
+    document.body.addEventListener('click', handleAdminClick);
 
-    // Initialize page navigation
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -90,7 +82,6 @@ function initAdmin() {
     });
 }
 
-// Load Data from Firestore
 async function loadAdminData() {
     await loadProducts();
     await loadCategories();
@@ -131,7 +122,6 @@ async function loadOrders() {
     });
 }
 
-// Render Admin Content
 function renderAllAdminContent() {
     renderProductsAdmin();
     renderCategoriesAdmin();
@@ -144,13 +134,14 @@ function renderProductsAdmin() {
     const container = document.getElementById('products-list');
     if (!container) return;
     container.innerHTML = products.length === 0
-        ? '<p class="empty-page-message">لا توجد منتجات حاليًا.</p>'
+        ? '<tr><td colspan="6" class="empty-page-message">لا توجد منتجات حاليًا.</td></tr>'
         : products.map(product => `
             <tr>
                 <td>${product.name}</td>
                 <td>${product.price} جنيه</td>
                 <td>${categories.find(c => c.id === product.category)?.name || 'غير مصنف'}</td>
                 <td><img src="${product.img}" alt="${product.name}" style="width: 50px;"></td>
+                <td>${product.featured ? 'نعم' : 'لا'}</td>
                 <td>
                     <button class="action-btn edit-product-btn" data-product-id="${product.id}">تعديل</button>
                     <button class="action-btn delete-product-btn" data-product-id="${product.id}">حذف</button>
@@ -162,7 +153,7 @@ function renderCategoriesAdmin() {
     const container = document.getElementById('categories-list');
     if (!container) return;
     container.innerHTML = categories.length === 0
-        ? '<p class="empty-page-message">لا توجد أقسام حاليًا.</p>'
+        ? '<tr><td colspan="2" class="empty-page-message">لا توجد أقسام حاليًا.</td></tr>'
         : categories.map(category => `
             <tr>
                 <td>${category.name}</td>
@@ -177,7 +168,7 @@ function renderCouponsAdmin() {
     const container = document.getElementById('coupons-list');
     if (!container) return;
     container.innerHTML = Object.keys(coupons).length === 0
-        ? '<p class="empty-page-message">لا توجد أكواد خصم حاليًا.</p>'
+        ? '<tr><td colspan="3" class="empty-page-message">لا توجد أكواد خصم حاليًا.</td></tr>'
         : Object.values(coupons).map(coupon => `
             <tr>
                 <td>${coupon.code}</td>
@@ -227,7 +218,6 @@ function renderOrdersAdmin() {
         }).join('');
 }
 
-// Form Handlers
 async function handleProductSubmit(e) {
     e.preventDefault();
     const productId = document.getElementById('product-id')?.value;
@@ -299,11 +289,9 @@ async function handleCouponSubmit(e) {
     }
 }
 
-// Admin Actions
 async function handleAdminClick(e) {
     const target = e.target;
 
-    // Edit product
     const editProductBtn = target.closest('.edit-product-btn');
     if (editProductBtn) {
         const productId = editProductBtn.dataset.productId;
@@ -319,7 +307,6 @@ async function handleAdminClick(e) {
         }
     }
 
-    // Delete product
     const deleteProductBtn = target.closest('.delete-product-btn');
     if (deleteProductBtn) {
         if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
@@ -331,7 +318,6 @@ async function handleAdminClick(e) {
         }
     }
 
-    // Edit category
     const editCategoryBtn = target.closest('.edit-category-btn');
     if (editCategoryBtn) {
         const categoryId = editCategoryBtn.dataset.categoryId;
@@ -342,7 +328,6 @@ async function handleAdminClick(e) {
         }
     }
 
-    // Delete category
     const deleteCategoryBtn = target.closest('.delete-category-btn');
     if (deleteCategoryBtn) {
         if (confirm('هل أنت متأكد من حذف هذا القسم؟')) {
@@ -355,7 +340,6 @@ async function handleAdminClick(e) {
         }
     }
 
-    // Delete coupon
     const deleteCouponBtn = target.closest('.delete-coupon-btn');
     if (deleteCouponBtn) {
         if (confirm('هل أنت متأكد من حذف كود الخصم؟')) {
@@ -367,7 +351,6 @@ async function handleAdminClick(e) {
         }
     }
 
-    // Update order status
     const statusSelect = target.closest('.order-status-select');
     if (statusSelect) {
         const orderId = statusSelect.dataset.orderId;
@@ -379,7 +362,6 @@ async function handleAdminClick(e) {
     }
 }
 
-// Update Category Select
 function updateCategorySelect() {
     const select = document.getElementById('product-category');
     if (!select) return;
@@ -387,18 +369,11 @@ function updateCategorySelect() {
         categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
-// Page Navigation
 function showAdminPage(pageId) {
     const validPages = ['products', 'categories', 'coupons', 'orders'];
-    if (!validPages.includes(pageId)) {
-        console.warn(`قيمة pageId غير صالحة: ${pageId}`);
-        return;
-    }
+    if (!validPages.includes(pageId)) return;
     const pageElement = document.getElementById(`${pageId}-page`);
-    if (!pageElement) {
-        console.warn(`الصفحة '${pageId}-page' غير موجودة في DOM.`);
-        return;
-    }
+    if (!pageElement) return;
     document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
     pageElement.classList.add('active');
 
@@ -407,7 +382,6 @@ function showAdminPage(pageId) {
     if (navLink) navLink.classList.add('active');
 }
 
-// Logout Handler
 function handleLogout() {
     signOut(auth)
         .then(() => {
@@ -419,7 +393,6 @@ function handleLogout() {
         });
 }
 
-// Show Toast
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
