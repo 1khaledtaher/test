@@ -1,403 +1,318 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
-    authDomain: "store-b5352.firebaseapp.com",
-    projectId: "store-b5352",
-    storageBucket: "store-b5352.firebasestorage.app",
-    messagingSenderId: "994825915869",
-    appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
-    measurementId: "G-KGZHS02V07"
+  apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
+  authDomain: "store-b5352.firebaseapp.com",
+  projectId: "store-b5352",
+  storageBucket: "store-b5352.firebasestorage.app",
+  messagingSenderId: "994825915869",
+  appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
+  measurementId: "G-KGZHS02V07"
 };
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Global State
+// لو عايز حماية الأدمن: أضف هنا بيانات بريد الأدمن وكلمة السر
+const ADMIN_EMAIL = "admin@email.com";
+const ADMIN_PASS = "adminpass";
+
 let products = [];
 let categories = [];
-let coupons = {};
+let coupons = [];
 let orders = [];
-const adminUIDs = ["S19VDQs7RqcQvN6jeUGgTBIMWb22"];
-let isProcessingAuth = false;
 
-// DOM Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    initAdmin();
+let editProductId = null;
+
+// --------- SPA Routing ----------
+function showAdminSection(section) {
+  document.querySelectorAll('.admin-section').forEach(sec => sec.style.display = 'none');
+  document.getElementById(`${section}-section`).style.display = '';
+  document.querySelectorAll('.admin-link').forEach(link => link.classList.remove('active'));
+  let active = document.querySelector(`.admin-link[data-section="${section}"]`);
+  if (active) active.classList.add('active');
+}
+window.addEventListener('hashchange', () => {
+  let hash = location.hash.replace('#', '');
+  if (!['products', 'categories', 'coupons', 'orders'].includes(hash)) hash = 'products';
+  showAdminSection(hash);
 });
+showAdminSection(location.hash.replace('#','') || 'products');
 
-function initAdmin() {
-    onAuthStateChanged(auth, (user) => {
-        if (isProcessingAuth) return;
-        isProcessingAuth = true;
+// --------- Auth Protection ----------
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    let email = prompt("بريد الأدمن:");
+    let pass = prompt("كلمة السر:");
+    if (!email || !pass) location.reload();
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      showToast('تم تسجيل الدخول بنجاح', 'success');
+      await reloadAll();
+    } catch {
+      alert("بيانات الدخول خطأ! أعد المحاولة.");
+      location.reload();
+    }
+  } else {
+    await reloadAll();
+  }
+});
+document.getElementById('admin-logout').onclick = async () => {
+  await signOut(auth);
+  location.reload();
+};
 
-        const adminContainer = document.getElementById('admin-container');
-        if (!adminContainer) {
-            console.warn("عنصر 'admin-container' غير موجود في DOM.");
-            showToast('خطأ في تحميل لوحة الإدارة.', 'error');
-            setTimeout(() => {
-                window.location.href = "index.html?auth=login";
-            }, 1000);
-            return;
-        }
-
-        if (user && adminUIDs.includes(user.uid)) {
-            adminContainer.classList.add('active');
-            loadAdminData();
-            isProcessingAuth = false;
-        } else {
-            showToast('غير مصرح لك بالوصول إلى لوحة الإدارة.', 'error');
-            setTimeout(() => {
-                window.location.href = "index.html?auth=login";
-            }, 1000);
-        }
-    });
-
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-
-    const productForm = document.getElementById('product-form');
-    if (productForm) productForm.addEventListener('submit', handleProductSubmit);
-
-    const categoryForm = document.getElementById('category-form');
-    if (categoryForm) categoryForm.addEventListener('submit', handleCategorySubmit);
-
-    const couponForm = document.getElementById('coupon-form');
-    if (couponForm) couponForm.addEventListener('submit', handleCouponSubmit);
-
-    document.body.addEventListener('click', handleAdminClick);
-
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const pageId = link.dataset.page;
-            showAdminPage(pageId);
-        });
-    });
+// --------- تحميل كل البيانات ---------
+async function reloadAll() {
+  await loadCategories();
+  await loadProducts();
+  await loadCoupons();
+  await loadOrders();
+  renderCategories();
+  renderProducts();
+  renderCoupons();
+  renderOrders();
+  fillCategorySelect();
 }
 
-async function loadAdminData() {
-    await loadProducts();
-    await loadCategories();
-    await loadCoupons();
-    await loadOrders();
-    renderAllAdminContent();
-}
-
+// --------- المنتجات ---------
 async function loadProducts() {
-    products = [];
-    const querySnapshot = await getDocs(collection(db, "products"));
-    querySnapshot.forEach(doc => {
-        products.push({ id: doc.id, ...doc.data() });
-    });
+  products = [];
+  const snap = await getDocs(collection(db, "products"));
+  snap.forEach(docu => products.push({id: docu.id, ...docu.data()}));
+}
+function renderProducts() {
+  let tbody = document.getElementById('products-tbody');
+  tbody.innerHTML = products.map(prod => `
+    <tr>
+      <td><img src="${prod.img}" style="width:48px;height:48px;border-radius:7px;" /></td>
+      <td>${prod.name}</td>
+      <td>${prod.desc||''}</td>
+      <td>${prod.price}</td>
+      <td>${categories.find(c=>c.id===prod.category)?.name||''}</td>
+      <td>
+        <input type="checkbox" data-id="${prod.id}" class="featured-chk" ${prod.featured ? "checked" : ""}>
+      </td>
+      <td>
+        <button class="small-btn" onclick="editProduct('${prod.id}')">تعديل</button>
+        <button class="danger-btn small-btn" onclick="deleteProduct('${prod.id}')">حذف</button>
+      </td>
+    </tr>
+  `).join('');
+  // زر مميز
+  tbody.querySelectorAll('.featured-chk').forEach(chk => {
+    chk.onchange = async e => {
+      await updateDoc(doc(db, "products", chk.dataset.id), {featured: chk.checked});
+      products.find(p=>p.id===chk.dataset.id).featured = chk.checked;
+      showToast('تم تحديث حالة التمييز', 'success');
+    }
+  });
+}
+window.editProduct = function(id) {
+  editProductId = id;
+  let prod = products.find(p=>p.id===id);
+  document.getElementById('product-modal-title').textContent = "تعديل منتج";
+  document.getElementById('product-name').value = prod.name;
+  document.getElementById('product-desc').value = prod.desc||'';
+  document.getElementById('product-price').value = prod.price;
+  document.getElementById('product-img').value = prod.img;
+  document.getElementById('product-category').value = prod.category;
+  document.getElementById('product-featured').checked = !!prod.featured;
+  document.getElementById('product-modal-bg').style.display = "flex";
+}
+window.deleteProduct = async function(id) {
+  if (!confirm("تأكيد حذف المنتج؟")) return;
+  await deleteDoc(doc(db, "products", id));
+  products = products.filter(p=>p.id!==id);
+  renderProducts();
+  showToast('تم حذف المنتج', 'success');
 }
 
+// إضافة/تعديل منتج
+document.getElementById('add-product-btn').onclick = () => {
+  editProductId = null;
+  document.getElementById('product-modal-title').textContent = "منتج جديد";
+  document.getElementById('product-form').reset();
+  document.getElementById('product-modal-bg').style.display = "flex";
+};
+document.getElementById('close-product-modal').onclick = () => {
+  document.getElementById('product-modal-bg').style.display = "none";
+};
+document.getElementById('product-form').onsubmit = async e => {
+  e.preventDefault();
+  let name = document.getElementById('product-name').value.trim();
+  let desc = document.getElementById('product-desc').value.trim();
+  let price = Number(document.getElementById('product-price').value);
+  let img = document.getElementById('product-img').value.trim();
+  let category = document.getElementById('product-category').value;
+  let featured = document.getElementById('product-featured').checked;
+  let data = {name, desc, price, img, category, featured};
+  if (editProductId) {
+    await updateDoc(doc(db, "products", editProductId), data);
+    Object.assign(products.find(p=>p.id===editProductId), data);
+    showToast('تم تعديل المنتج', 'success');
+  } else {
+    await addDoc(collection(db, "products"), data);
+    showToast('تم إضافة المنتج', 'success');
+  }
+  await loadProducts();
+  renderProducts();
+  document.getElementById('product-modal-bg').style.display = "none";
+};
+
+// --------- التصنيفات ---------
 async function loadCategories() {
-    categories = [];
-    const querySnapshot = await getDocs(collection(db, "categories"));
-    querySnapshot.forEach(doc => {
-        categories.push({ id: doc.id, ...doc.data() });
-    });
+  categories = [];
+  const snap = await getDocs(collection(db, "categories"));
+  snap.forEach(docu => categories.push({id: docu.id, ...docu.data()}));
+}
+function renderCategories() {
+  let tbody = document.getElementById('categories-tbody');
+  tbody.innerHTML = categories.map(cat => `
+    <tr>
+      <td>${cat.name}</td>
+      <td><button class="danger-btn small-btn" onclick="deleteCategory('${cat.id}')">حذف</button></td>
+    </tr>
+  `).join('');
+}
+window.deleteCategory = async function(id) {
+  if (!confirm("تأكيد حذف التصنيف؟")) return;
+  await deleteDoc(doc(db, "categories", id));
+  categories = categories.filter(c=>c.id!==id);
+  renderCategories();
+  fillCategorySelect();
+  showToast('تم حذف التصنيف', 'success');
+}
+document.getElementById('add-category-form').onsubmit = async e => {
+  e.preventDefault();
+  let name = document.getElementById('category-name').value.trim();
+  if (!name) return;
+  await addDoc(collection(db, "categories"), {name});
+  showToast('تم إضافة التصنيف', 'success');
+  await loadCategories();
+  renderCategories();
+  fillCategorySelect();
+  document.getElementById('add-category-form').reset();
+};
+function fillCategorySelect() {
+  let sel = document.getElementById('product-category');
+  if (!sel) return;
+  sel.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
+// --------- الكوبونات ---------
 async function loadCoupons() {
-    coupons = {};
-    const querySnapshot = await getDocs(collection(db, "coupons"));
-    querySnapshot.forEach(doc => {
-        coupons[doc.id] = { id: doc.id, ...doc.data() };
-    });
+  coupons = [];
+  const snap = await getDocs(collection(db, "coupons"));
+  snap.forEach(docu => coupons.push({id: docu.id, ...docu.data()}));
 }
+function renderCoupons() {
+  let tbody = document.getElementById('coupons-tbody');
+  tbody.innerHTML = coupons.map(coup => `
+    <tr>
+      <td>${coup.code}</td>
+      <td>${coup.type==='percent'?'نسبة %':'قيمة ثابتة'}</td>
+      <td>${coup.value}</td>
+      <td><button class="danger-btn small-btn" onclick="deleteCoupon('${coup.id}')">حذف</button></td>
+    </tr>
+  `).join('');
+}
+window.deleteCoupon = async function(id) {
+  if (!confirm("تأكيد حذف الكوبون؟")) return;
+  await deleteDoc(doc(db, "coupons", id));
+  coupons = coupons.filter(c=>c.id!==id);
+  renderCoupons();
+  showToast('تم حذف الكوبون', 'success');
+}
+document.getElementById('add-coupon-form').onsubmit = async e => {
+  e.preventDefault();
+  let code = document.getElementById('coupon-code').value.trim().toUpperCase();
+  let type = document.getElementById('coupon-type').value;
+  let value = Number(document.getElementById('coupon-value').value);
+  if (!code || !type || !value) return;
+  await addDoc(collection(db, "coupons"), {code, type, value});
+  showToast('تم إضافة الكوبون', 'success');
+  await loadCoupons();
+  renderCoupons();
+  document.getElementById('add-coupon-form').reset();
+};
 
+// --------- الطلبات ---------
 async function loadOrders() {
-    orders = [];
-    const querySnapshot = await getDocs(collection(db, "orders"));
-    querySnapshot.forEach(doc => {
-        orders.push({ id: doc.id, ...doc.data() });
-    });
+  orders = [];
+  const snap = await getDocs(collection(db, "orders"));
+  snap.forEach(docu => orders.push({id: docu.id, ...docu.data()}));
 }
+function renderOrders() {
+  let tbody = document.getElementById('orders-tbody');
+  // ترتيب: غير ملغي (الأحدث للأقدم)، ثم الملغي (الأقدم للأحدث)
+  const activeStatuses = ["review", "shipping", "delivered", "returned"];
+  const activeOrders = orders.filter(o => !o.status || activeStatuses.includes(o.status));
+  const cancelledOrders = orders.filter(o => o.status === "cancelled");
+  activeOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
+  cancelledOrders.sort((a, b) => new Date(a.date) - new Date(b.date));
+  const allSorted = [...activeOrders, ...cancelledOrders];
 
-function renderAllAdminContent() {
-    renderProductsAdmin();
-    renderCategoriesAdmin();
-    renderCouponsAdmin();
-    renderOrdersAdmin();
-    updateCategorySelect();
-}
-
-function renderProductsAdmin() {
-    const container = document.getElementById('products-list');
-    if (!container) return;
-    container.innerHTML = products.length === 0
-        ? '<tr><td colspan="6" class="empty-page-message">لا توجد منتجات حاليًا.</td></tr>'
-        : products.map(product => `
-            <tr>
-                <td>${product.name}</td>
-                <td>${product.price} جنيه</td>
-                <td>${categories.find(c => c.id === product.category)?.name || 'غير مصنف'}</td>
-                <td><img src="${product.img}" alt="${product.name}" style="width: 50px;"></td>
-                <td>${product.featured ? 'نعم' : 'لا'}</td>
-                <td>
-                    <button class="action-btn edit-product-btn" data-product-id="${product.id}">تعديل</button>
-                    <button class="action-btn delete-product-btn" data-product-id="${product.id}">حذف</button>
-                </td>
-            </tr>`).join('');
-}
-
-function renderCategoriesAdmin() {
-    const container = document.getElementById('categories-list');
-    if (!container) return;
-    container.innerHTML = categories.length === 0
-        ? '<tr><td colspan="2" class="empty-page-message">لا توجد أقسام حاليًا.</td></tr>'
-        : categories.map(category => `
-            <tr>
-                <td>${category.name}</td>
-                <td>
-                    <button class="action-btn edit-category-btn" data-category-id="${category.id}">تعديل</button>
-                    <button class="action-btn delete-category-btn" data-category-id="${category.id}">حذف</button>
-                </td>
-            </tr>`).join('');
-}
-
-function renderCouponsAdmin() {
-    const container = document.getElementById('coupons-list');
-    if (!container) return;
-    container.innerHTML = Object.keys(coupons).length === 0
-        ? '<tr><td colspan="3" class="empty-page-message">لا توجد أكواد خصم حاليًا.</td></tr>'
-        : Object.values(coupons).map(coupon => `
-            <tr>
-                <td>${coupon.code}</td>
-                <td>${coupon.type === 'percent' ? `${coupon.value}%` : `${coupon.value} جنيه`}</td>
-                <td>
-                    <button class="action-btn delete-coupon-btn" data-coupon-id="${coupon.id}">حذف</button>
-                </td>
-            </tr>`).join('');
-}
-
-function renderOrdersAdmin() {
-    const container = document.getElementById('orders-list');
-    if (!container) return;
-    container.innerHTML = orders.length === 0
-        ? '<p class="empty-page-message">لا توجد طلبات حاليًا.</p>'
-        : orders.map(order => {
-            const statusInfo = {
-                review: { text: "تحت المراجعة", class: "review" },
-                shipping: { text: "قيد التوصيل", class: "shipping" },
-                delivered: { text: "تم الاستلام", class: "delivered" },
-                cancelled: { text: "ملغي", class: "cancelled" },
-                returned: { text: "تم الإرجاع", class: "returned" }
-            }[order.status] || { text: 'غير معروف', class: '' };
-            const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
-            return `
-                <div class="order-card">
-                    <div class="order-header">
-                        <h3>طلب رقم #${order.id}</h3>
-                        <span class="order-status ${statusInfo.class}">${statusInfo.text}</span>
-                    </div>
-                    <div class="order-items-summary">
-                        <p><strong>المنتجات:</strong> ${itemsSummary}</p>
-                        <p><strong>الإجمالي:</strong> ${order.total.toFixed(2)} جنيه</p>
-                        <p><strong>تاريخ الطلب:</strong> ${order.date}</p>
-                        <p><strong>معرف المستخدم:</strong> ${order.userId}</p>
-                    </div>
-                    <div class="order-footer">
-                        <select class="order-status-select" data-order-id="${order.id}">
-                            <option value="review" ${order.status === 'review' ? 'selected' : ''}>تحت المراجعة</option>
-                            <option value="shipping" ${order.status === 'shipping' ? 'selected' : ''}>قيد التوصيل</option>
-                            <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>تم الاستلام</option>
-                            <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>ملغي</option>
-                            <option value="returned" ${order.status === 'returned' ? 'selected' : ''}>تم الإرجاع</option>
-                        </select>
-                    </div>
-                </div>`;
-        }).join('');
-}
-
-async function handleProductSubmit(e) {
-    e.preventDefault();
-    const productId = document.getElementById('product-id')?.value;
-    const productData = {
-        name: document.getElementById('product-name')?.value,
-        price: parseFloat(document.getElementById('product-price')?.value),
-        category: document.getElementById('product-category')?.value,
-        img: document.getElementById('product-image')?.value,
-        desc: document.getElementById('product-description')?.value,
-        featured: document.getElementById('product-featured')?.checked
-    };
-
-    try {
-        if (productId) {
-            await updateDoc(doc(db, "products", productId), productData);
-            showToast('تم تعديل المنتج بنجاح!', 'success');
-        } else {
-            await addDoc(collection(db, "products"), productData);
-            showToast('تم إضافة المنتج بنجاح!', 'success');
-        }
-        document.getElementById('product-form')?.reset();
-        document.getElementById('product-id').value = '';
-        await loadProducts();
-        renderProductsAdmin();
-    } catch (error) {
-        showToast(`خطأ: ${error.message}`, 'error');
+  tbody.innerHTML = allSorted.map(order => `
+    <tr>
+      <td>#${order.order_number||order.id}</td>
+      <td>
+        <span class="order-status ${order.status||''}">${getStatusText(order.status)}</span>
+      </td>
+      <td>${order.items.map(i=>`${i.name}(x${i.quantity})`).join('<br>')}</td>
+      <td>${order.userId}</td>
+      <td>${order.total} ج</td>
+      <td>${formatOrderDate(order.date)}</td>
+      <td>
+        <select data-id="${order.id}" class="order-status-select">
+          <option value="review" ${order.status==='review'?'selected':''}>تحت المراجعة</option>
+          <option value="shipping" ${order.status==='shipping'?'selected':''}>قيد الشحن</option>
+          <option value="delivered" ${order.status==='delivered'?'selected':''}>تم التوصيل</option>
+          <option value="returned" ${order.status==='returned'?'selected':''}>مرتجع</option>
+          <option value="cancelled" ${order.status==='cancelled'?'selected':''}>ملغي</option>
+        </select>
+      </td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('.order-status-select').forEach(sel => {
+    sel.onchange = async e => {
+      await updateDoc(doc(db, "orders", sel.dataset.id), {status: sel.value});
+      orders.find(o=>o.id===sel.dataset.id).status = sel.value;
+      showToast('تم تحديث حالة الطلب', 'success');
+      renderOrders();
     }
+  });
+}
+function getStatusText(status) {
+  return {
+    review: "تحت المراجعة",
+    shipping: "قيد الشحن",
+    delivered: "تم التوصيل",
+    returned: "مرتجع",
+    cancelled: "ملغي"
+  }[status] || "غير معرف";
+}
+function formatOrderDate(dateISO) {
+  const d = new Date(dateISO);
+  let hours = d.getHours();
+  let mins = d.getMinutes();
+  let ampm = hours >= 12 ? "مساءً" : "صباحًا";
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  mins = mins < 10 ? "0" + mins : mins;
+  const dateStr = d.toLocaleDateString('ar-EG');
+  return `${dateStr} - ${hours}:${mins} ${ampm}`;
 }
 
-async function handleCategorySubmit(e) {
-    e.preventDefault();
-    const categoryId = document.getElementById('category-id')?.value;
-    const categoryData = { name: document.getElementById('category-name')?.value };
-
-    try {
-        if (categoryId) {
-            await updateDoc(doc(db, "categories", categoryId), categoryData);
-            showToast('تم تعديل القسم بنجاح!', 'success');
-        } else {
-            await addDoc(collection(db, "categories"), categoryData);
-            showToast('تم إضافة القسم بنجاح!', 'success');
-        }
-        document.getElementById('category-form')?.reset();
-        document.getElementById('category-id').value = '';
-        await loadCategories();
-        renderCategoriesAdmin();
-        updateCategorySelect();
-    } catch (error) {
-        showToast(`خطأ: ${error.message}`, 'error');
-    }
-}
-
-async function handleCouponSubmit(e) {
-    e.preventDefault();
-    const couponData = {
-        code: document.getElementById('coupon-code')?.value.toUpperCase(),
-        type: document.getElementById('coupon-type')?.value,
-        value: parseFloat(document.getElementById('coupon-value')?.value)
-    };
-
-    try {
-        await addDoc(collection(db, "coupons"), couponData);
-        showToast('تم إضافة كود الخصم بنجاح!', 'success');
-        document.getElementById('coupon-form')?.reset();
-        await loadCoupons();
-        renderCouponsAdmin();
-    } catch (error) {
-        showToast(`خطأ: ${error.message}`, 'error');
-    }
-}
-
-async function handleAdminClick(e) {
-    const target = e.target;
-
-    const editProductBtn = target.closest('.edit-product-btn');
-    if (editProductBtn) {
-        const productId = editProductBtn.dataset.productId;
-        const product = products.find(p => p.id === productId);
-        if (product) {
-            document.getElementById('product-id').value = product.id;
-            document.getElementById('product-name').value = product.name;
-            document.getElementById('product-price').value = product.price;
-            document.getElementById('product-category').value = product.category;
-            document.getElementById('product-image').value = product.img;
-            document.getElementById('product-description').value = product.desc;
-            document.getElementById('product-featured').checked = product.featured;
-        }
-    }
-
-    const deleteProductBtn = target.closest('.delete-product-btn');
-    if (deleteProductBtn) {
-        if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-            const productId = deleteProductBtn.dataset.productId;
-            await deleteDoc(doc(db, "products", productId));
-            showToast('تم حذف المنتج بنجاح!', 'success');
-            await loadProducts();
-            renderProductsAdmin();
-        }
-    }
-
-    const editCategoryBtn = target.closest('.edit-category-btn');
-    if (editCategoryBtn) {
-        const categoryId = editCategoryBtn.dataset.categoryId;
-        const category = categories.find(c => c.id === categoryId);
-        if (category) {
-            document.getElementById('category-id').value = category.id;
-            document.getElementById('category-name').value = category.name;
-        }
-    }
-
-    const deleteCategoryBtn = target.closest('.delete-category-btn');
-    if (deleteCategoryBtn) {
-        if (confirm('هل أنت متأكد من حذف هذا القسم؟')) {
-            const categoryId = deleteCategoryBtn.dataset.categoryId;
-            await deleteDoc(doc(db, "categories", categoryId));
-            showToast('تم حذف القسم بنجاح!', 'success');
-            await loadCategories();
-            renderCategoriesAdmin();
-            updateCategorySelect();
-        }
-    }
-
-    const deleteCouponBtn = target.closest('.delete-coupon-btn');
-    if (deleteCouponBtn) {
-        if (confirm('هل أنت متأكد من حذف كود الخصم؟')) {
-            const couponId = deleteCouponBtn.dataset.couponId;
-            await deleteDoc(doc(db, "coupons", couponId));
-            showToast('تم حذف كود الخصم بنجاح!', 'success');
-            await loadCoupons();
-            renderCouponsAdmin();
-        }
-    }
-
-    const statusSelect = target.closest('.order-status-select');
-    if (statusSelect) {
-        const orderId = statusSelect.dataset.orderId;
-        const newStatus = statusSelect.value;
-        await updateDoc(doc(db, "orders", orderId), { status: newStatus });
-        showToast('تم تحديث حالة الطلب بنجاح!', 'success');
-        await loadOrders();
-        renderOrdersAdmin();
-    }
-}
-
-function updateCategorySelect() {
-    const select = document.getElementById('product-category');
-    if (!select) return;
-    select.innerHTML = '<option value="">اختر قسمًا</option>' + 
-        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-}
-
-function showAdminPage(pageId) {
-    const validPages = ['products', 'categories', 'coupons', 'orders'];
-    if (!validPages.includes(pageId)) return;
-    const pageElement = document.getElementById(`${pageId}-page`);
-    if (!pageElement) return;
-    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-    pageElement.classList.add('active');
-
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    const navLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
-    if (navLink) navLink.classList.add('active');
-}
-
-function handleLogout() {
-    signOut(auth)
-        .then(() => {
-            showToast('تم تسجيل الخروج بنجاح!', 'success');
-            window.location.href = "index.html?auth=login";
-        })
-        .catch(error => {
-            showToast(`خطأ في تسجيل الخروج: ${error.message}`, 'error');
-        });
-}
-
+// --------- Toast ---------
 function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2900);
 }
