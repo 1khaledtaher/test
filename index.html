@@ -30,16 +30,18 @@
         </form>
         <div id="upload-status"></div>
     </div>
+
     <!-- تحميل Firebase كوحدات -->
     <script type="module">
         // استيراد Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
         import { getDatabase } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
-        // إعدادات Firebase
+        // ✅ إعدادات Firebase (بعد التعديل)
         const firebaseConfig = {
             apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
             authDomain: "store-b5352.firebaseapp.com",
+            databaseURL: "https://store-b5352-default-rtdb.firebaseio.com", // ✅ تم إضافته
             projectId: "store-b5352",
             storageBucket: "store-b5352.firebasestorage.app",
             messagingSenderId: "994825915869",
