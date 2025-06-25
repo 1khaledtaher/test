@@ -19,8 +19,8 @@ const db = getFirestore(app);
 
 // --- ✨ إضافة جديدة: إعدادات Cloudinary ---
 // Cloudinary Configuration (مهم جداً: استبدل ببياناتك)
-const CLOUDINARY_CLOUD_NAME = "YOUR_CLOUD_NAME"; //  ضع هنا اسم السحابة الخاص بك
-const CLOUDINARY_UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // ضع هنا اسم الـ Upload Preset
+const CLOUDINARY_CLOUD_NAME = "dxisaw6cu"; //  ضع هنا اسم السحابة الخاص بك
+const CLOUDINARY_UPLOAD_PRESET = "anaqa-products"; // ضع هنا اسم الـ Upload Preset
 
 
 const ADMIN_PASSWORD = "1234";
