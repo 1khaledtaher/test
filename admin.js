@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -18,284 +18,396 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Cloudinary Configuration
-const CLOUDINARY_CLOUD_NAME = "dxisaw6cu";
-const CLOUDINARY_UPLOAD_PRESET = "anaqa-products";
+// Global State
+let products = [];
+let categories = [];
+let coupons = {};
+let orders = [];
+const adminUIDs = ["S19VDQs7RqcQvN6jeUGgTBIMWb22"]; // استبدل بمعرف المستخدم الإداري
 
-// Check Admin Authentication
-onAuthStateChanged(auth, (user) => {
-    if (!user) {
-        window.location.href = "login.html"; // Redirect to login if not authenticated
+// DOM Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    initAdmin();
+});
+
+function initAdmin() {
+    // Check admin status
+    onAuthStateChanged(auth, (user) => {
+        if (user && adminUIDs.includes(user.uid)) {
+            document.getElementById('admin-container')?.classList.add('active');
+            loadAdminData();
+        } else {
+            // Redirect to index.html with auth modal trigger if not admin
+            window.location.href = "index.html?auth=login";
+        }
+    });
+
+    // Logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
     }
-});
 
-// Logout Handler
-document.getElementById("logout-btn").addEventListener("click", () => {
-    signOut(auth).then(() => {
-        window.location.href = "login.html";
-    }).catch((error) => {
-        showToast(`خطأ أثناء تسجيل الخروج: ${error.message}`, "error");
-    });
-});
+    // Form submissions
+    const productForm = document.getElementById('product-form');
+    if (productForm) productForm.addEventListener('submit', handleProductSubmit);
 
-// Navigation Handler
-document.querySelectorAll(".nav-link").forEach(link => {
-    link.addEventListener("click", (e) => {
-        e.preventDefault();
-        document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
-        document.querySelectorAll(".admin-section").forEach(s => s.classList.remove("active"));
-        link.classList.add("active");
-        document.getElementById(`${link.dataset.section}-section`).classList.add("active");
-    });
-});
+    const categoryForm = document.getElementById('category-form');
+    if (categoryForm) categoryForm.addEventListener('submit', handleCategorySubmit);
 
-// Load Categories for Product Form
-async function loadCategories() {
-    const categorySelect = document.getElementById("product-category");
-    categorySelect.innerHTML = '<option value="">اختر القسم</option>';
-    const querySnapshot = await getDocs(collection(db, "categories"));
-    querySnapshot.forEach(doc => {
-        const option = document.createElement("option");
-        option.value = doc.id;
-        option.textContent = doc.data().name;
-        categorySelect.appendChild(option);
+    const couponForm = document.getElementById('coupon-form');
+    if (couponForm) couponForm.addEventListener('submit', handleCouponSubmit);
+
+    // Global click handler for admin actions
+    document.body.addEventListener('click', handleAdminClick);
+
+    // Initialize page navigation
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.dataset.page;
+            showAdminPage(pageId);
+        });
     });
 }
 
-// Add Product Handler
-document.getElementById("add-product-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const status = document.getElementById("product-upload-status");
-    const name = document.getElementById("product-name").value;
-    const price = parseFloat(document.getElementById("product-price").value);
-    const desc = document.getElementById("product-desc").value;
-    const category = document.getElementById("product-category").value;
-    const imageFile = document.getElementById("product-image").files[0];
+// Load Data from Firestore
+async function loadAdminData() {
+    await loadProducts();
+    await loadCategories();
+    await loadCoupons();
+    await loadOrders();
+    renderAllAdminContent();
+}
 
-    if (!imageFile || !name || !price || !category) {
-        status.textContent = "الرجاء ملء كل الحقول.";
-        return;
-    }
-
-    status.textContent = "جاري رفع الصورة...";
-    const formData = new FormData();
-    formData.append("file", imageFile);
-    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-    try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-            method: "POST",
-            body: formData
-        });
-        const data = await response.json();
-        if (data.secure_url) {
-            status.textContent = "جاري حفظ المنتج...";
-            await addDoc(collection(db, "products"), {
-                name, price, desc, img: data.secure_url, category, featured: false
-            });
-            status.textContent = "🎉 تم إضافة المنتج بنجاح!";
-            document.getElementById("add-product-form").reset();
-            loadProducts();
-        } else {
-            throw new Error("فشل رفع الصورة.");
-        }
-    } catch (error) {
-        status.textContent = `خطأ: ${error.message}`;
-    }
-});
-
-// Load Products
 async function loadProducts() {
-    const container = document.getElementById("products-list");
-    container.innerHTML = "";
+    products = [];
     const querySnapshot = await getDocs(collection(db, "products"));
     querySnapshot.forEach(doc => {
-        const product = doc.data();
-        const div = document.createElement("div");
-        div.className = "item-card";
-        div.innerHTML = `
-            <img src="${product.img}" alt="${product.name}">
-            <div class="item-details">
-                <h4>${product.name}</h4>
-                <p>${product.price} جنيه</p>
-                <p>${product.desc}</p>
-                <button class="delete-btn" data-id="${doc.id}">حذف</button>
-            </div>`;
-        container.appendChild(div);
-    });
-
-    // Delete Product Handler
-    document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            await deleteDoc(doc(db, "products", btn.dataset.id));
-            showToast("تم حذف المنتج بنجاح!", "success");
-            loadProducts();
-        });
+        products.push({ id: doc.id, ...doc.data() });
     });
 }
 
-// Add Category Handler
-document.getElementById("add-category-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const status = document.getElementById("category-status");
-    const name = document.getElementById("category-name").value;
-
-    try {
-        await addDoc(collection(db, "categories"), { name });
-        status.textContent = "🎉 تم إضافة القسم بنجاح!";
-        document.getElementById("add-category-form").reset();
-        loadCategories();
-        renderCategories();
-    } catch (error) {
-        status.textContent = `خطأ: ${error.message}`;
-    }
-});
-
-// Load Categories
-async function renderCategories() {
-    const container = document.getElementById("categories-list");
-    container.innerHTML = "";
+async function loadCategories() {
+    categories = [];
     const querySnapshot = await getDocs(collection(db, "categories"));
     querySnapshot.forEach(doc => {
-        const category = doc.data();
-        const div = document.createElement("div");
-        div.className = "item-card";
-        div.innerHTML = `
-            <div class="item-details">
-                <h4>${category.name}</h4>
-                <button class="delete-btn" data-id="${doc.id}">حذف</button>
-            </div>`;
-        container.appendChild(div);
-    });
-
-    // Delete Category Handler
-    document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            await deleteDoc(doc(db, "categories", btn.dataset.id));
-            showToast("تم حذف القسم بنجاح!", "success");
-            loadCategories();
-            renderCategories();
-        });
+        categories.push({ id: doc.id, ...doc.data() });
     });
 }
 
-// Add Coupon Handler
-document.getElementById("add-coupon-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const status = document.getElementById("coupon-status");
-    const code = document.getElementById("coupon-code").value.toUpperCase();
-    const type = document.getElementById("coupon-type").value;
-    const value = parseFloat(document.getElementById("coupon-value").value);
-
-    try {
-        await addDoc(collection(db, "coupons"), { code, type, value });
-        status.textContent = "🎉 تم إضافة الكود بنجاح!";
-        document.getElementById("add-coupon-form").reset();
-        loadCoupons();
-    } catch (error) {
-        status.textContent = `خطأ: ${error.message}`;
-    }
-});
-
-// Load Coupons
 async function loadCoupons() {
-    const container = document.getElementById("coupons-list");
-    container.innerHTML = "";
+    coupons = {};
     const querySnapshot = await getDocs(collection(db, "coupons"));
     querySnapshot.forEach(doc => {
-        const coupon = doc.data();
-        const div = document.createElement("div");
-        div.className = "item-card";
-        div.innerHTML = `
-            <div class="item-details">
-                <h4>${coupon.code}</h4>
-                <p>${coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value} جنيه`}</p>
-                <button class="delete-btn" data-id="${doc.id}">حذف</button>
-            </div>`;
-        container.appendChild(div);
-    });
-
-    // Delete Coupon Handler
-    document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            await deleteDoc(doc(db, "coupons", btn.dataset.id));
-            showToast("تم حذف الكود بنجاح!", "success");
-            loadCoupons();
-        });
+        coupons[doc.id] = { id: doc.id, ...doc.data() };
     });
 }
 
-// Load Orders
 async function loadOrders() {
-    const container = document.getElementById("orders-list");
-    container.innerHTML = "";
+    orders = [];
     const querySnapshot = await getDocs(collection(db, "orders"));
     querySnapshot.forEach(doc => {
-        const order = doc.data();
-        const div = document.createElement("div");
-        div.className = "item-card";
-        div.innerHTML = `
-            <div class="item-details">
-                <h4>طلب #${doc.id}</h4>
-                <p>الإجمالي: ${order.total} جنيه</p>
-                <p>الحالة: ${order.status}</p>
-                <select class="status-select" data-id="${doc.id}">
-                    <option value="review" ${order.status === "review" ? "selected" : ""}>تحت المراجعة</option>
-                    <option value="shipping" ${order.status === "shipping" ? "selected" : ""}>قيد التوصيل</option>
-                    <option value="delivered" ${order.status === "delivered" ? "selected" : ""}>تم الاستلام</option>
-                    <option value="cancelled" ${order.status === "cancelled" ? "selected" : ""}>ملغي</option>
-                    <option value="returned" ${order.status === "returned" ? "selected" : ""}>تم الإرجاع</option>
-                </select>
-            </div>`;
-        container.appendChild(div);
-    });
-
-    // Update Order Status Handler
-    document.querySelectorAll(".status-select").forEach(select => {
-        select.addEventListener("change", async () => {
-            await updateDoc(doc(db, "orders", select.dataset.id), {
-                status: select.value
-            });
-            showToast("تم تحديث حالة الطلب بنجاح!", "success");
-        });
+        orders.push({ id: doc.id, ...doc.data() });
     });
 }
 
-// Load Users
-async function loadUsers() {
-    const container = document.getElementById("users-list");
-    container.innerHTML = "";
-    const querySnapshot = await getDocs(collection(db, "users"));
-    querySnapshot.forEach(doc => {
-        const user = doc.data();
-        const div = document.createElement("div");
-        div.className = "item-card";
-        div.innerHTML = `
-            <div class="item-details">
-                <h4>${user.displayName || "غير معروف"}</h4>
-                <p>${user.email}</p>
-            </div>`;
-        container.appendChild(div);
-    });
+// Render Admin Content
+function renderAllAdminContent() {
+    renderProductsAdmin();
+    renderCategoriesAdmin();
+    renderCouponsAdmin();
+    renderOrdersAdmin();
+    updateCategorySelect();
+}
+
+function renderProductsAdmin() {
+    const container = document.getElementById('products-list');
+    if (!container) return;
+    container.innerHTML = products.length === 0
+        ? '<p class="empty-page-message">لا توجد منتجات حاليًا.</p>'
+        : products.map(product => `
+            <tr>
+                <td>${product.name}</td>
+                <td>${product.price} جنيه</td>
+                <td>${categories.find(c => c.id === product.category)?.name || 'غير مصنف'}</td>
+                <td><img src="${product.img}" alt="${product.name}" style="width: 50px;"></td>
+                <td>
+                    <button class="action-btn edit-product-btn" data-product-id="${product.id}">تعديل</button>
+                    <button class="action-btn delete-product-btn" data-product-id="${product.id}">حذف</button>
+                </td>
+            </tr>`).join('');
+}
+
+function renderCategoriesAdmin() {
+    const container = document.getElementById('categories-list');
+    if (!container) return;
+    container.innerHTML = categories.length === 0
+        ? '<p class="empty-page-message">لا توجد أقسام حاليًا.</p>'
+        : categories.map(category => `
+            <tr>
+                <td>${category.name}</td>
+                <td>
+                    <button class="action-btn edit-category-btn" data-category-id="${category.id}">تعديل</button>
+                    <button class="action-btn delete-category-btn" data-category-id="${category.id}">حذف</button>
+                </td>
+            </tr>`).join('');
+}
+
+function renderCouponsAdmin() {
+    const container = document.getElementById('coupons-list');
+    if (!container) return;
+    container.innerHTML = Object.keys(coupons).length === 0
+        ? '<p class="empty-page-message">لا توجد أكواد خصم حاليًا.</p>'
+        : Object.values(coupons).map(coupon => `
+            <tr>
+                <td>${coupon.code}</td>
+                <td>${coupon.type === 'percent' ? `${coupon.value}%` : `${coupon.value} جنيه`}</td>
+                <td>
+                    <button class="action-btn delete-coupon-btn" data-coupon-id="${coupon.id}">حذف</button>
+                </td>
+            </tr>`).join('');
+}
+
+function renderOrdersAdmin() {
+    const container = document.getElementById('orders-list');
+    if (!container) return;
+    container.innerHTML = orders.length === 0
+        ? '<p class="empty-page-message">لا توجد طلبات حاليًا.</p>'
+        : orders.map(order => {
+            const statusInfo = {
+                review: { text: "تحت المراجعة", class: "review" },
+                shipping: { text: "قيد التوصيل", class: "shipping" },
+                delivered: { text: "تم الاستلام", class: "delivered" },
+                cancelled: { text: "ملغي", class: "cancelled" },
+                returned: { text: "تم الإرجاع", class: "returned" }
+            }[order.status] || { text: 'غير معروف', class: '' };
+            const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
+            return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <h3>طلب رقم #${order.id}</h3>
+                        <span class="order-status ${statusInfo.class}">${statusInfo.text}</span>
+                    </div>
+                    <div class="order-items-summary">
+                        <p><strong>المنتجات:</strong> ${itemsSummary}</p>
+                        <p><strong>الإجمالي:</strong> ${order.total.toFixed(2)} جنيه</p>
+                        <p><strong>تاريخ الطلب:</strong> ${order.date}</p>
+                        <p><strong>معرف المستخدم:</strong> ${order.userId}</p>
+                    </div>
+                    <div class="order-footer">
+                        <select class="order-status-select" data-order-id="${order.id}">
+                            <option value="review" ${order.status === 'review' ? 'selected' : ''}>تحت المراجعة</option>
+                            <option value="shipping" ${order.status === 'shipping' ? 'selected' : ''}>قيد التوصيل</option>
+                            <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>تم الاستلام</option>
+                            <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>ملغي</option>
+                            <option value="returned" ${order.status === 'returned' ? 'selected' : ''}>تم الإرجاع</option>
+                        </select>
+                    </div>
+                </div>`;
+        }).join('');
+}
+
+// Form Handlers
+async function handleProductSubmit(e) {
+    e.preventDefault();
+    const productId = document.getElementById('product-id')?.value;
+    const productData = {
+        name: document.getElementById('product-name')?.value,
+        price: parseFloat(document.getElementById('product-price')?.value),
+        category: document.getElementById('product-category')?.value,
+        img: document.getElementById('product-image')?.value,
+        desc: document.getElementById('product-description')?.value,
+        featured: document.getElementById('product-featured')?.checked
+    };
+
+    try {
+        if (productId) {
+            await updateDoc(doc(db, "products", productId), productData);
+            showToast('تم تعديل المنتج بنجاح!', 'success');
+        } else {
+            await addDoc(collection(db, "products"), productData);
+            showToast('تم إضافة المنتج بنجاح!', 'success');
+        }
+        document.getElementById('product-form')?.reset();
+        document.getElementById('product-id').value = '';
+        await loadProducts();
+        renderProductsAdmin();
+    } catch (error) {
+        showToast(`خطأ: ${error.message}`, 'error');
+    }
+}
+
+async function handleCategorySubmit(e) {
+    e.preventDefault();
+    const categoryId = document.getElementById('category-id')?.value;
+    const categoryData = { name: document.getElementById('category-name')?.value };
+
+    try {
+        if (categoryId) {
+            await updateDoc(doc(db, "categories", categoryId), categoryData);
+            showToast('تم تعديل القسم بنجاح!', 'success');
+        } else {
+            await addDoc(collection(db, "categories"), categoryData);
+            showToast('تم إضافة القسم بنجاح!', 'success');
+        }
+        document.getElementById('category-form')?.reset();
+        document.getElementById('category-id').value = '';
+        await loadCategories();
+        renderCategoriesAdmin();
+        updateCategorySelect();
+    } catch (error) {
+        showToast(`خطأ: ${error.message}`, 'error');
+    }
+}
+
+async function handleCouponSubmit(e) {
+    e.preventDefault();
+    const couponData = {
+        code: document.getElementById('coupon-code')?.value.toUpperCase(),
+        type: document.getElementById('coupon-type')?.value,
+        value: parseFloat(document.getElementById('coupon-value')?.value)
+    };
+
+    try {
+        await addDoc(collection(db, "coupons"), couponData);
+        showToast('تم إضافة كود الخصم بنجاح!', 'success');
+        document.getElementById('coupon-form')?.reset();
+        await loadCoupons();
+        renderCouponsAdmin();
+    } catch (error) {
+        showToast(`خطأ: ${error.message}`, 'error');
+    }
+}
+
+// Admin Actions
+async function handleAdminClick(e) {
+    const target = e.target;
+
+    // Edit product
+    const editProductBtn = target.closest('.edit-product-btn');
+    if (editProductBtn) {
+        const productId = editProductBtn.dataset.productId;
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            document.getElementById('product-id').value = product.id;
+            document.getElementById('product-name').value = product.name;
+            document.getElementById('product-price').value = product.price;
+            document.getElementById('product-category').value = product.category;
+            document.getElementById('product-image').value = product.img;
+            document.getElementById('product-description').value = product.desc;
+            document.getElementById('product-featured').checked = product.featured;
+        }
+    }
+
+    // Delete product
+    const deleteProductBtn = target.closest('.delete-product-btn');
+    if (deleteProductBtn) {
+        if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+            const productId = deleteProductBtn.dataset.productId;
+            await deleteDoc(doc(db, "products", productId));
+            showToast('تم حذف المنتج بنجاح!', 'success');
+            await loadProducts();
+            renderProductsAdmin();
+        }
+    }
+
+    // Edit category
+    const editCategoryBtn = target.closest('.edit-category-btn');
+    if (editCategoryBtn) {
+        const categoryId = editCategoryBtn.dataset.categoryId;
+        const category = categories.find(c => c.id === categoryId);
+        if (category) {
+            document.getElementById('category-id').value = category.id;
+            document.getElementById('category-name').value = category.name;
+        }
+    }
+
+    // Delete category
+    const deleteCategoryBtn = target.closest('.delete-category-btn');
+    if (deleteCategoryBtn) {
+        if (confirm('هل أنت متأكد من حذف هذا القسم؟')) {
+            const categoryId = deleteCategoryBtn.dataset.categoryId;
+            await deleteDoc(doc(db, "categories", categoryId));
+            showToast('تم حذف القسم بنجاح!', 'success');
+            await loadCategories();
+            renderCategoriesAdmin();
+            updateCategorySelect();
+        }
+    }
+
+    // Delete coupon
+    const deleteCouponBtn = target.closest('.delete-coupon-btn');
+    if (deleteCouponBtn) {
+        if (confirm('هل أنت متأكد من حذف كود الخصم؟')) {
+            const couponId = deleteCouponBtn.dataset.couponId;
+            await deleteDoc(doc(db, "coupons", couponId));
+            showToast('تم حذف كود الخصم بنجاح!', 'success');
+            await loadCoupons();
+            renderCouponsAdmin();
+        }
+    }
+
+    // Update order status
+    const statusSelect = target.closest('.order-status-select');
+    if (statusSelect) {
+        const orderId = statusSelect.dataset.orderId;
+        const newStatus = statusSelect.value;
+        await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+        showToast('تم تحديث حالة الطلب بنجاح!', 'success');
+        await loadOrders();
+        renderOrdersAdmin();
+    }
+}
+
+// Update Category Select
+function updateCategorySelect() {
+    const select = document.getElementById('product-category');
+    if (!select) return;
+    select.innerHTML = '<option value="">اختر قسمًا</option>' + 
+        categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+// Page Navigation
+function showAdminPage(pageId) {
+    const validPages = ['products', 'categories', 'coupons', 'orders'];
+    if (!validPages.includes(pageId)) {
+        console.warn(`قيمة pageId غير صالحة: ${pageId}`);
+        return;
+    }
+    const pageElement = document.getElementById(`${pageId}-page`);
+    if (!pageElement) {
+        console.warn(`الصفحة '${pageId}-page' غير موجودة في DOM.`);
+        return;
+    }
+    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+    pageElement.classList.add('active');
+
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const navLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
+    if (navLink) navLink.classList.add('active');
+}
+
+// Logout Handler
+function handleLogout() {
+    signOut(auth)
+        .then(() => {
+            showToast('تم تسجيل الخروج بنجاح!', 'success');
+            window.location.href = "index.html?auth=login";
+        })
+        .catch(error => {
+            showToast(`خطأ في تسجيل الخروج: ${error.message}`, 'error');
+        });
 }
 
 // Show Toast
-function showToast(message, type) {
-    const container = document.getElementById("toast-container");
-    const toast = document.createElement("div");
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
 }
-
-// Initialize
-async function init() {
-    await loadCategories();
-    await loadProducts();
-    await renderCategories();
-    await loadCoupons();
-    await loadOrders();
-    await loadUsers();
-}
-init();
